@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNN Air Quality Predictor</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050816;
+            --bg-accent: #11193a;
+            --card-bg: rgba(255, 255, 255, 0.96);
+            --border: rgba(15, 23, 42, 0.08);
+            --primary: #5a54ff;
+            --primary-dark: #433cbf;
+            --text: #0f172a;
+            --muted: #5f6b86;
+            --success: #22c55e;
+            --warning: #fbbf24;
+            --danger: #f87171;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Space Grotesk', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(145deg, var(--bg), var(--bg-accent));
+            color: var(--text);
+            min-height: 100vh;
+            padding: 32px 20px 48px;
+            display: flex;
+            justify-content: center;
+            background-attachment: fixed;
+        }
+        .bg-pattern {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 20% 20%, rgba(90, 84, 255, 0.18), transparent 35%),
+                        radial-gradient(circle at 80% 0%, rgba(34, 197, 94, 0.12), transparent 35%),
+                        radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.18), transparent 45%);
+            pointer-events: none;
+            z-index: 0;
+            animation: pulse 12s ease-in-out infinite alternate;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.04); opacity: 1; }
+        }
+        .page {
+            width: min(1120px, 100%);
+            z-index: 1;
+        }
+        .hero {
+            text-align: center;
+            color: #e2e8f0;
+            margin-bottom: 28px;
+        }
+        .hero .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            font-size: 0.75rem;
+            color: rgba(226, 232, 240, 0.72);
+        }
+        .hero h1 {
+            font-size: clamp(2.1rem, 4vw, 3rem);
+            margin: 12px 0;
+            color: #f8fafc;
+        }
+        .hero p {
+            max-width: 640px;
+            margin: 0 auto;
+            color: rgba(226, 232, 240, 0.82);
+        }
+        .content-grid {
+            display: grid;
+            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        }
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(18px);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.15);
+            padding: 32px;
+        }
+        .form-header h2 {
+            margin: 0 0 6px;
+            font-size: 1.35rem;
+        }
+        .form-header p {
+            margin: 0 0 24px;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        .input-field label {
+            display: block;
+            font-size: 0.86rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        .field-wrapper {
+            position: relative;
+        }
+        input[type="number"] {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 12px 40px 12px 14px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(90, 84, 255, 0.2);
+        }
+        .unit {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+        .button-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+            flex-wrap: wrap;
+        }
+        button {
+            border: none;
+            border-radius: 999px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .primary-btn {
+            background: linear-gradient(120deg, var(--primary), #7c3aed);
+            color: #fff;
+            flex: 1;
+            min-width: 180px;
+            box-shadow: 0 12px 30px rgba(90, 84, 255, 0.35);
+        }
+        .primary-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        .ghost-btn {
+            background: transparent;
+            border: 1px dashed rgba(90, 84, 255, 0.5);
+            color: var(--primary-dark);
+        }
+        .result-box {
+            margin-top: 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            padding: 22px;
+            display: none;
+            line-height: 1.5;
+        }
+        .result-box.visible {
+            display: block;
+        }
+        .result-title {
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.22em;
+            color: var(--muted);
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 8px 16px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .status-good {
+            background: rgba(34, 197, 94, 0.15);
+            color: #15803d;
+        }
+        .status-moderate {
+            background: rgba(251, 191, 36, 0.2);
+            color: #92400e;
+        }
+        .status-unhealthy {
+            background: rgba(248, 113, 113, 0.2);
+            color: #b91c1c;
+        }
+        .status-error {
+            background: rgba(248, 113, 113, 0.2);
+            color: #991b1b;
+        }
+        .insights-card h3 {
+            margin: 0 0 12px;
+            font-size: 1.15rem;
+        }
+        .insight-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px;
+            color: var(--muted);
+        }
+        .insight-list li {
+            margin-bottom: 10px;
+            padding-left: 18px;
+            position: relative;
+        }
+        .insight-list li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+        }
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot.good { background: var(--success); }
+        .dot.moderate { background: var(--warning); }
+        .dot.unhealthy { background: var(--danger); }
+        @media (max-width: 600px) {
+            .card { padding: 24px; }
+            body { padding: 18px 16px 32px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern" aria-hidden="true"></div>
+    <div class="page">
+        <header class="hero">
+            <p class="eyebrow">KNN Air Monitor</p>
+            <h1>Prediksi Kualitas Udara Bulanan</h1>
+            <p>Analisis cepat kualitas udara berdasarkan konsentrasi PM2.5 setiap bulan. Masukkan data historis satu tahun dan dapatkan label kualitas secara instan.</p>
+        </header>
+
+        <main class="content-grid">
+            <section class="card form-card">
+                <div class="form-header">
+                    <h2>Masukkan data PM2.5 per bulan</h2>
+                    <p>Gunakan satuan konsentrasi yang sama seperti data pelatihan (misal µg/m³). Semua kolom wajib diisi.</p>
+                </div>
+                <form id="predictForm">
+                    <div class="input-grid" id="inputGrid"></div>
+                    <div class="button-row">
+                        <button type="button" class="primary-btn" id="predictBtn">Prediksi Sekarang</button>
+                        <button type="reset" class="ghost-btn" id="resetBtn">Reset</button>
+                    </div>
+                </form>
+                <div id="result" class="result-box" role="status"></div>
+            </section>
+
+            <section class="card insights-card">
+                <h3>Kenapa prediksi ini penting?</h3>
+                <ul class="insight-list">
+                    <li>Membantu merencanakan kebijakan mitigasi polusi udara lebih dini.</li>
+                    <li>Memberi gambaran cepat apakah kualitas udara cenderung memburuk.</li>
+                    <li>Menyediakan insight konsisten untuk edukasi masyarakat.</li>
+                </ul>
+                <h4>Legenda Label</h4>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot good"></span> Good (Baik)</div>
+                    <div class="legend-item"><span class="dot moderate"></span> Moderate (Sedang)</div>
+                    <div class="legend-item"><span class="dot unhealthy"></span> Unhealthy (Buruk)</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const labelClassMap = {
+            "Good (Baik)": "status-good",
+            "Moderate (Sedang)": "status-moderate",
+            "Unhealthy (Buruk)": "status-unhealthy"
+        };
+
+        const inputGrid = document.getElementById("inputGrid");
+        inputGrid.innerHTML = months.map((month, idx) => `
+            <div class="input-field">
+                <label for="${month}">${idx + 1}. ${month}</label>
+                <div class="field-wrapper">
+                    <input type="number" step="0.1" min="0" id="${month}" name="${month}" placeholder="0.0" required>
+                    <span class="unit">µg/m³</span>
+                </div>
+            </div>
+        `).join("");
+
+        const resultBox = document.getElementById("result");
+        const predictBtn = document.getElementById("predictBtn");
+        const resetBtn = document.getElementById("resetBtn");
+
+        const setButtonLoading = (state) => {
+            if (state) {
+                predictBtn.dataset.originalText = predictBtn.textContent;
+                predictBtn.textContent = "Memproses...";
+            } else {
+                predictBtn.textContent = predictBtn.dataset.originalText || "Prediksi Sekarang";
+            }
+            predictBtn.disabled = state;
+        };
+
+        const buildPayload = () => {
+            const payload = {};
+            for (const month of months) {
+                const value = document.getElementById(month).value.trim();
+                if (value === "") {
+                    return { error: `Kolom ${month} belum diisi.` };
+                }
+                payload[month] = parseFloat(value);
+                if (Number.isNaN(payload[month])) {
+                    return { error: `Nilai ${month} tidak valid.` };
+                }
+            }
+            return { payload };
+        };
+
+        const renderResult = (type, message, extra = "") => {
+            resultBox.className = "result-box visible";
+            resultBox.innerHTML = `
+                <div class="result-title">Status</div>
+                <div class="status-pill ${type}">${message}</div>
+                ${extra ? `<p style="margin-top:12px;color:${type === 'status-error' ? '#991b1b' : 'var(--muted)'}">${extra}</p>` : ""}
+            `;
+        };
+
+        const handleSubmit = async () => {
+            const { payload, error } = buildPayload();
+            if (error) {
+                renderResult("status-error", "Input tidak valid", error);
+                resultBox.focus();
+                return;
+            }
+
+            try {
+                setButtonLoading(true);
+                const response = await fetch("/predict", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (data.error) {
+                    renderResult("status-error", "Terjadi Kesalahan", data.error);
+                    return;
+                }
+                const statusClass = labelClassMap[data.predicted_label] || "status-moderate";
+                renderResult(statusClass, data.predicted_label, "Label dihitung dari model KNN berbasis data historis.");
+            } catch (err) {
+                renderResult("status-error", "Terjadi Kesalahan", "Koneksi ke server gagal. Coba ulang beberapa saat lagi.");
+            } finally {
+                setButtonLoading(false);
+            }
+        };
+
+        predictBtn.addEventListener("click", handleSubmit);
+        resetBtn.addEventListener("click", () => {
+            resultBox.classList.remove("visible", "status-good", "status-moderate", "status-unhealthy", "status-error");
+            resultBox.textContent = "";
+        });
+    </script>
+</body>
+</html>
